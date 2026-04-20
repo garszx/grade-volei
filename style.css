@@ -1,50 +1,83 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #f4f4f9;
+    background-color: #121212; /* Fundo principal escuro */
+    color: #e0e0e0; /* Letras claras */
     padding: 20px;
     max-width: 500px;
     margin: auto;
     position: relative; 
 }
 
-h2 { text-align: center; color: #333; margin-top: 40px; }
+h2 { 
+    text-align: center; 
+    color: #ffffff; 
+    margin-top: 40px; 
+}
 
 .card {
-    background: white;
+    background: #1e1e1e; /* Fundo dos blocos levemente mais claro que o fundo */
     padding: 15px;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3); /* Sombra mais marcada */
     margin-bottom: 20px;
 }
 
-h3 { margin-top: 0; color: #555; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+h3 { 
+    margin-top: 0; 
+    color: #cccccc; 
+    border-bottom: 2px solid #333; /* Linha divisória escura */
+    padding-bottom: 5px; 
+}
 
-ul { list-style-type: none; padding: 0; margin: 0; }
+ul { 
+    list-style-type: none; 
+    padding: 0; 
+    margin: 0; 
+}
 
 li {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 12px 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #333;
     font-size: 16px;
 }
 li:last-child { border-bottom: none; }
 
 .btn-action { background: #ff4757; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
-.btn-remove { background: #ccc; color: #333; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
-.court-item { background-color: #eccc68; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
+
+/* Botão "Sair" ajustado para combinar com o fundo escuro */
+.btn-remove { background: #444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 13px; }
+
+/* Destaque para quem está em quadra (Amarelo com texto preto para dar leitura) */
+.court-item { background-color: #eccc68; color: #111; font-weight: bold; border-radius: 4px; margin-bottom: 5px; }
 
 .input-group { display: flex; gap: 10px; }
-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+
+/* Caixa de texto ajustada */
+input { 
+    flex: 1; 
+    padding: 10px; 
+    border: 1px solid #444; 
+    background-color: #2a2a2a; 
+    color: white; 
+    border-radius: 4px; 
+    font-size: 16px; 
+}
+input::placeholder { color: #888; }
+
 .btn-add { background: #2ed573; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; }
 
 .btn-group { display: flex; gap: 5px; }
 .btn-slot { background: #3498db; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
-.slot-empty { background-color: #eaeaea; color: #777; font-style: italic; justify-content: center; }
+
+/* Vaga vazia mais sutil no tema escuro */
+.slot-empty { background-color: #2a2a2a; color: #888; font-style: italic; justify-content: center; }
 
 .btn-reset { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 14px; }
 
+/* Botão de Admin no topo */
 #loginBtn {
     background: #333;
     color: white;
@@ -58,6 +91,7 @@ input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font
     right: 20px;
 }
 
+/* Lógica de esconder itens */
 .admin-only, .admin-only-block { display: none !important; }
 body.is-admin .admin-only { display: inline-block !important; }
 body.is-admin .admin-only-block { display: block !important; }
