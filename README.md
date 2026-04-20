@@ -41,3 +41,13 @@ Como o projeto não utiliza frameworks complexos ou base de dados externa, rodá
 1. Clona este repositório:
    ```bash
    git clone [https://github.com/espertty/grade-volei.git](https://github.com/espertty/grade-volei.git)
+
+## 🔐 Configuração de Senha (Desenvolvedores)
+
+Por padrão, a senha para liberar os botões da Área Admin vem fixada diretamente no código frontend.
+* **Senha Padrão de Fábrica:** `volei123`
+
+**Para alterar a senha no seu clone:**
+1. Abra o arquivo `script.js`.
+2. Role até o final do arquivo, na seção de `// Lógica de Login`.
+3. Altere o valor da string `"volei123"` dentro da condição `if (senha === "volei123")` para a sua nova senha desejada.
