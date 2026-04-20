@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Grade - Vôlei</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <button id="loginBtn">Área Admin</button>
+
+    <h2>🏐 Grade do Vôlei</h2>
+
+    <div class="card">
+        <h3>Dentro de Quadra</h3>
+        <ul id="courtList"></ul>
+    </div>
+
+    <div class="card">
+        <h3>Fila de Espera</h3>
+        <ul id="queueList"></ul>
+    </div>
+
+    <div class="card">
+        <h3>Adicionar Jogador</h3>
+        <div class="input-group">
+            <input type="text" id="newPlayer" placeholder="Nome do jogador">
+            <button class="btn-add" id="addBtn">Adicionar</button>
+        </div>
+    </div>
+
+    <div class="card admin-only-block" id="resetCard">
+        <button class="btn-reset" id="resetBtn">Zerar Grade Completa</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
