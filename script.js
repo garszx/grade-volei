@@ -1,19 +1,23 @@
 let court = { 1: null, 2: null };
+let scores = { 1: 0, 2: 0 }; // Novo controle de placar
 let queue = [];
 let hasAddedName = false; 
 
 function loadData() {
     const savedCourt = localStorage.getItem("voleiCourt");
+    const savedScores = localStorage.getItem("voleiScores");
     const savedQueue = localStorage.getItem("voleiQueue");
     const savedBlock = localStorage.getItem("voleiHasAdded"); 
     
     if (savedCourt) court = JSON.parse(savedCourt);
+    if (savedScores) scores = JSON.parse(savedScores);
     if (savedQueue) queue = JSON.parse(savedQueue);
     if (savedBlock === "true") hasAddedName = true;
 }
 
 function saveData() {
     localStorage.setItem("voleiCourt", JSON.stringify(court));
+    localStorage.setItem("voleiScores", JSON.stringify(scores));
     localStorage.setItem("voleiQueue", JSON.stringify(queue));
     localStorage.setItem("voleiHasAdded", hasAddedName); 
 }
@@ -24,6 +28,7 @@ const inputElement = document.getElementById("newPlayer");
 const addBtn = document.getElementById("addBtn");
 const resetBtn = document.getElementById("resetBtn");
 const loginBtn = document.getElementById("loginBtn");
+const resetScoreBtn = document.getElementById("resetScoreBtn"); // Novo botão
 
 function render() {
     courtList.innerHTML = "";
@@ -39,21 +44,18 @@ function render() {
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
         
-        // Botão Subir
         const btnUp = document.createElement("button");
         btnUp.className = "btn-move admin-only";
         btnUp.innerHTML = "⬆️"; 
         btnUp.onclick = () => moveUp(index);
-        if (index === 0) btnUp.style.display = "none"; // Esconde para o primeiro
+        if (index === 0) btnUp.style.display = "none"; 
 
-        // Botão Descer
         const btnDown = document.createElement("button");
         btnDown.className = "btn-move admin-only";
         btnDown.innerHTML = "⬇️";
         btnDown.onclick = () => moveDown(index);
-        if (index === queue.length - 1) btnDown.style.display = "none"; // Esconde para o último
+        if (index === queue.length - 1) btnDown.style.display = "none"; 
 
-        // NOVO: Menu de Ações Dropdown
         const actionSelect = document.createElement("select");
         actionSelect.className = "action-select admin-only";
         actionSelect.innerHTML = `
@@ -63,7 +65,6 @@ function render() {
             <option value="sair">Sair da Fila</option>
         `;
         
-        // Lógica de quando o usuário escolhe uma opção
         actionSelect.onchange = (e) => {
             const acaoEscolhida = e.target.value;
             if (acaoEscolhida === "v1") forceEnter(index, 1);
@@ -73,7 +74,7 @@ function render() {
 
         btnGroup.appendChild(btnUp);
         btnGroup.appendChild(btnDown);
-        btnGroup.appendChild(actionSelect); // Adiciona o menu no grupo
+        btnGroup.appendChild(actionSelect); 
         
         li.appendChild(nameSpan);
         li.appendChild(btnGroup);
@@ -85,10 +86,38 @@ function render() {
 function renderSlot(slotNumber) {
     const li = document.createElement("li");
     const player = court[slotNumber];
+    const currentScore = scores[slotNumber];
+
     if (player) {
         li.className = "court-item";
-        li.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}</span>`;
         
+        // Info do Jogador
+        const infoDiv = document.createElement("div");
+        infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}</span>`;
+        
+        // Placar
+        const scoreDiv = document.createElement("div");
+        scoreDiv.className = "score-board";
+        
+        const btnMinus = document.createElement("button");
+        btnMinus.className = "btn-score admin-only";
+        btnMinus.textContent = "-";
+        btnMinus.onclick = () => updateScore(slotNumber, -1);
+
+        const scoreDisplay = document.createElement("span");
+        scoreDisplay.className = "score-value";
+        scoreDisplay.textContent = currentScore;
+
+        const btnPlus = document.createElement("button");
+        btnPlus.className = "btn-score admin-only";
+        btnPlus.textContent = "+";
+        btnPlus.onclick = () => updateScore(slotNumber, 1);
+
+        scoreDiv.appendChild(btnMinus);
+        scoreDiv.appendChild(scoreDisplay);
+        scoreDiv.appendChild(btnPlus);
+
+        // Botões de Ação
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
 
@@ -104,12 +133,23 @@ function renderSlot(slotNumber) {
 
         btnGroup.appendChild(btnLost);
         btnGroup.appendChild(btnExit);
+        
+        li.appendChild(infoDiv);
+        li.appendChild(scoreDiv);
         li.appendChild(btnGroup);
     } else {
         li.className = "slot-empty";
         li.innerHTML = `<span>Vaga ${slotNumber}: Vazia</span>`;
     }
     courtList.appendChild(li);
+}
+
+// NOVO: Função para alterar placar
+function updateScore(slot, change) {
+    scores[slot] += change;
+    if (scores[slot] < 0) scores[slot] = 0;
+    if (scores[slot] > 25) scores[slot] = 25;
+    render();
 }
 
 function addPlayer() {
@@ -137,7 +177,8 @@ function addPlayer() {
 function playerLost(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]); 
-        court[slotNumber] = null;      
+        court[slotNumber] = null;
+        scores[slotNumber] = 0; // Zera o placar ao perder
         if (queue.length > 0) court[slotNumber] = queue.shift();
         render();
     }
@@ -147,6 +188,7 @@ function removeFromSlot(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]);
         court[slotNumber] = null;
+        scores[slotNumber] = 0; // Zera o placar ao sair
         render();
     }
 }
@@ -155,6 +197,7 @@ function forceEnter(queueIndex, slotNumber) {
     const player = queue.splice(queueIndex, 1)[0]; 
     if (court[slotNumber]) queue.push(court[slotNumber]);
     court[slotNumber] = player;
+    scores[slotNumber] = 0; // Zera o placar ao forçar nova entrada
     render();
 }
 
@@ -184,9 +227,11 @@ function moveDown(index) {
 function resetAll() {
     if (confirm("Tem certeza que deseja apagar TUDO?")) {
         court = { 1: null, 2: null };
+        scores = { 1: 0, 2: 0 };
         queue = [];
         hasAddedName = false; 
         localStorage.removeItem("voleiCourt");
+        localStorage.removeItem("voleiScores");
         localStorage.removeItem("voleiQueue");
         localStorage.removeItem("voleiHasAdded");
         render();
@@ -196,6 +241,16 @@ function resetAll() {
 addBtn.addEventListener("click", addPlayer);
 inputElement.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });
 resetBtn.addEventListener("click", resetAll);
+
+// Evento do novo botão de Zerar Placar
+if (resetScoreBtn) {
+    resetScoreBtn.addEventListener("click", () => {
+        if (confirm("Zerar o placar de ambas as vagas?")) {
+            scores = { 1: 0, 2: 0 };
+            render();
+        }
+    });
+}
 
 let isAdmin = false;
 loginBtn.addEventListener("click", () => {
