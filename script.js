@@ -103,6 +103,7 @@ function renderSlot(slotNumber) {
         btnMinus.onclick = () => updateScore(slotNumber, -1);
 
         const scoreDisplay = document.createElement("span");
+        scoreDisplay.id = `score-display-${slotNumber}`; // <--- MUDANÇA AQUI: Criamos um ID único para o placar
         scoreDisplay.className = "score-value";
         scoreDisplay.textContent = currentScore;
 
@@ -141,11 +142,20 @@ function renderSlot(slotNumber) {
     courtList.appendChild(li);
 }
 
+// MUDANÇA AQUI: Otimização extrema de performance
 function updateScore(slot, change) {
     scores[slot] += change;
     if (scores[slot] < 0) scores[slot] = 0;
     if (scores[slot] > 25) scores[slot] = 25;
-    render();
+    
+    // Atualiza APENAS o textozinho do placar, sem recarregar a tela inteira
+    const display = document.getElementById(`score-display-${slot}`);
+    if (display) {
+        display.textContent = scores[slot];
+    }
+    
+    // Salva na memória do celular silenciosamente
+    saveData();
 }
 
 function addPlayer() {
@@ -170,33 +180,30 @@ function addPlayer() {
     }
 }
 
-// Alterado: Agora reseta ambos os placares ao perder
 function playerLost(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]); 
         court[slotNumber] = null;
-        scores = { 1: 0, 2: 0 }; // Reset global para nova partida
+        scores = { 1: 0, 2: 0 }; 
         if (queue.length > 0) court[slotNumber] = queue.shift();
         render();
     }
 }
 
-// Alterado: Agora reseta ambos os placares ao sair
 function removeFromSlot(slotNumber) {
     if (court[slotNumber]) {
         queue.push(court[slotNumber]);
         court[slotNumber] = null;
-        scores = { 1: 0, 2: 0 }; // Reset global para nova partida
+        scores = { 1: 0, 2: 0 }; 
         render();
     }
 }
 
-// Alterado: Agora reseta ambos os placares ao forçar entrada
 function forceEnter(queueIndex, slotNumber) {
     const player = queue.splice(queueIndex, 1)[0]; 
     if (court[slotNumber]) queue.push(court[slotNumber]);
     court[slotNumber] = player;
-    scores = { 1: 0, 2: 0 }; // Reset global para nova partida
+    scores = { 1: 0, 2: 0 }; 
     render();
 }
 
