@@ -8,18 +8,20 @@
 </head>
 <body>
 
-    <button id="loginBtn">Área Admin</button>
+    <div class="top-bar">
+        <span id="connectionStatus" class="status-indicator">🟢 Online</span>
+        <button id="loginBtn" class="btn-login">Área Admin</button>
+    </div>
 
     <h2>🏐 Grade do Vôlei</h2>
 
     <div class="card">
-    <div class="court-header">
-        <h3>Dentro de Quadra</h3>
-        <button id="resetScoreBtn" class="btn-reset-score admin-only">Zerar Placar</button>
+        <div class="court-header">
+            <h3>Dentro de Quadra</h3>
+            <button id="resetScoreBtn" class="btn-reset-score admin-only">Zerar Placar</button>
+        </div>
+        <ul id="courtList"></ul>
     </div>
-    <ul id="courtList">
-        </ul>
-</div>
 
     <div class="card">
         <h3>Fila de Espera</h3>

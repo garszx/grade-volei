@@ -103,7 +103,7 @@ function renderSlot(slotNumber) {
         btnMinus.onclick = () => updateScore(slotNumber, -1);
 
         const scoreDisplay = document.createElement("span");
-        scoreDisplay.id = `score-display-${slotNumber}`; // <--- MUDANÇA AQUI: Criamos um ID único para o placar
+        scoreDisplay.id = `score-display-${slotNumber}`;
         scoreDisplay.className = "score-value";
         scoreDisplay.textContent = currentScore;
 
@@ -142,19 +142,15 @@ function renderSlot(slotNumber) {
     courtList.appendChild(li);
 }
 
-// MUDANÇA AQUI: Otimização extrema de performance
 function updateScore(slot, change) {
     scores[slot] += change;
     if (scores[slot] < 0) scores[slot] = 0;
     if (scores[slot] > 25) scores[slot] = 25;
     
-    // Atualiza APENAS o textozinho do placar, sem recarregar a tela inteira
     const display = document.getElementById(`score-display-${slot}`);
     if (display) {
         display.textContent = scores[slot];
     }
-    
-    // Salva na memória do celular silenciosamente
     saveData();
 }
 
@@ -264,6 +260,10 @@ loginBtn.addEventListener("click", () => {
         isAdmin = false;
         loginBtn.textContent = "Área Admin";
     } else {
+        if (!isOnline) {
+            alert("Você precisa de internet para acessar o modo Admin.");
+            return; 
+        }
         const senha = prompt("Digite a senha do administrador:");
         if (senha === "volei123") {
             document.body.classList.add("is-admin");
@@ -275,5 +275,42 @@ loginBtn.addEventListener("click", () => {
     }
 });
 
+// --- SISTEMA HÍBRIDO: DETECÇÃO DE REDE ---
+let isOnline = navigator.onLine; 
+const statusIndicator = document.getElementById("connectionStatus");
+const newPlayerInput = document.getElementById("newPlayer");
+
+function updateNetworkStatus() {
+    if (isOnline) {
+        statusIndicator.textContent = "🟢 Online";
+        statusIndicator.style.color = "#2ed573";
+        if (isAdmin) document.body.classList.add("is-admin");
+        
+        addBtn.disabled = false;
+        newPlayerInput.disabled = false;
+        newPlayerInput.placeholder = "Nome do jogador";
+    } else {
+        statusIndicator.textContent = "🔴 Offline (Apenas Leitura)";
+        statusIndicator.style.color = "#ff4757";
+        document.body.classList.remove("is-admin");
+        
+        addBtn.disabled = true;
+        newPlayerInput.disabled = true;
+        newPlayerInput.placeholder = "Sem conexão...";
+    }
+}
+
+window.addEventListener("online", () => {
+    isOnline = true;
+    updateNetworkStatus();
+});
+
+window.addEventListener("offline", () => {
+    isOnline = false;
+    updateNetworkStatus();
+});
+
+// Executa funções de inicialização
 loadData();
+updateNetworkStatus();
 render();
