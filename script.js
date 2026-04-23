@@ -19,6 +19,11 @@ let court = { 1: null, 2: null };
 let scores = { 1: 0, 2: 0 }; 
 let queue = [];
 let myPlayerName = null; 
+let correctionCount = 0; 
+
+const playerNameDisplay = document.getElementById("playerNameDisplay");
+const identifyBtn = document.getElementById("identifyBtn");
+const editIdentityBtn = document.getElementById("editIdentityBtn");
 
 function loadData() {
     if (!currentLocal) return; 
@@ -26,10 +31,15 @@ function loadData() {
     const savedData = localStorage.getItem(storageKey);
     
     const savedMyName = localStorage.getItem(`voleiMyName_${currentLocal}`);
+    const savedCorrection = localStorage.getItem(`voleiCorrection_${currentLocal}`);
+    
+    if (savedCorrection) correctionCount = parseInt(savedCorrection, 10);
+
     if (savedMyName) {
         myPlayerName = savedMyName;
-        document.getElementById("playerNameDisplay").textContent = myPlayerName;
-        document.getElementById("identifyBtn").style.display = "none";
+        playerNameDisplay.textContent = myPlayerName;
+        identifyBtn.style.display = "none";
+        editIdentityBtn.style.display = "inline-block"; 
     }
     
     if (savedData) {
@@ -48,6 +58,7 @@ function saveData() {
     
     if (myPlayerName) {
         localStorage.setItem(`voleiMyName_${currentLocal}`, myPlayerName);
+        localStorage.setItem(`voleiCorrection_${currentLocal}`, correctionCount);
     }
 }
 
@@ -57,10 +68,7 @@ const inputElement = document.getElementById("newPlayer");
 const addBtn = document.getElementById("addBtn");
 const resetBtn = document.getElementById("resetBtn");
 const loginBtn = document.getElementById("loginBtn");
-const identifyBtn = document.getElementById("identifyBtn");
-const playerNameDisplay = document.getElementById("playerNameDisplay");
 const resetScoreBtn = document.getElementById("resetScoreBtn"); 
-const unlockDeviceBtn = document.getElementById("unlockDeviceBtn");
 
 function render() {
     courtList.innerHTML = "";
@@ -132,7 +140,9 @@ function renderSlot(slotNumber) {
     if (player) {
         li.className = "court-item";
         const infoDiv = document.createElement("div");
-        infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}</span>`;
+        
+        const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
+        infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}${isMe}</span>`;
         
         const scoreDiv = document.createElement("div");
         scoreDiv.className = "score-board";
@@ -191,31 +201,90 @@ function updateScore(slot, change) {
 }
 
 identifyBtn.addEventListener("click", () => {
-    const nomeInput = prompt("Qual o seu nome na fila? (Escreva exatamente como está na lista)");
+    const nomeInput = prompt("Qual o seu nome na grade?");
     if (nomeInput && nomeInput.trim() !== "") {
-        const confirmacao = confirm(`ATENÇÃO: Seu celular ficará travado como "${nomeInput.trim()}". Você não poderá mudar isso depois. Confirma?`);
-        if (confirmacao) {
-            myPlayerName = nomeInput.trim();
-            playerNameDisplay.textContent = myPlayerName;
-            identifyBtn.style.display = "none";
-            saveData();
-            render();
-        }
+        myPlayerName = nomeInput.trim();
+        correctionCount = 0; 
+        playerNameDisplay.textContent = myPlayerName;
+        identifyBtn.style.display = "none";
+        editIdentityBtn.style.display = "inline-block"; 
+        saveData();
+        render();
     }
 });
 
-if (unlockDeviceBtn) {
-    unlockDeviceBtn.addEventListener("click", () => {
-        if (confirm("Liberar este celular para vincular outro nome?")) {
-            myPlayerName = null;
-            localStorage.removeItem(`voleiMyName_${currentLocal}`);
-            playerNameDisplay.textContent = "Ninguém";
-            identifyBtn.style.display = "inline-block";
+editIdentityBtn.addEventListener("click", () => {
+    if (correctionCount === 0) {
+        const novoNome = prompt(`Você tem 1 CORREÇÃO SEM PENALIDADE.\nCorrigir o nome "${myPlayerName}" para qual nome?`);
+        
+        if (novoNome && novoNome.trim() !== "" && novoNome.trim() !== myPlayerName) {
+            const oldName = myPlayerName;
+            myPlayerName = novoNome.trim();
+            correctionCount++;
+
+            if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) {
+                court[1] = myPlayerName;
+            } else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) {
+                court[2] = myPlayerName;
+            } else {
+                const qIndex = queue.findIndex(p => p.toLowerCase() === oldName.toLowerCase());
+                if (qIndex !== -1) queue[qIndex] = myPlayerName;
+            }
+
+            playerNameDisplay.textContent = myPlayerName;
+            saveData();
             render();
-            alert("Aparelho desvinculado! Você já pode usar o botão 'Sou Eu' novamente.");
+            alert("Nome corrigido com sucesso! Sua posição foi mantida.");
         }
-    });
-}
+    } else {
+        const confirmacao = confirm(`⚠️ ALERTA DE PENALIDADE ⚠️\nVocê já usou sua correção grátis.\nSe você mudar o nome de novo, será enviado para o FINAL DA FILA automaticamente.\n\nDeseja continuar?`);
+        
+        if (confirmacao) {
+            const novoNome = prompt("Digite o novo nome:");
+            if (novoNome && novoNome.trim() !== "" && novoNome.trim() !== myPlayerName) {
+                const oldName = myPlayerName;
+                myPlayerName = novoNome.trim();
+                correctionCount++;
+
+                let wasInCourt = false;
+
+                if (court[1] && court[1].toLowerCase() === oldName.toLowerCase()) {
+                    court[1] = null;
+                    wasInCourt = true;
+                } else if (court[2] && court[2].toLowerCase() === oldName.toLowerCase()) {
+                    court[2] = null;
+                    wasInCourt = true;
+                } else {
+                    const qIndex = queue.findIndex(p => p.toLowerCase() === oldName.toLowerCase());
+                    if (qIndex !== -1) queue.splice(qIndex, 1); 
+                }
+
+                // A MÁGICA AQUI: Conta quantos INOCENTES tem na fila antes de jogar o fraudador lá
+                let innocentCount = queue.length;
+                queue.push(myPlayerName);
+
+                if (wasInCourt) {
+                    scores = { 1: 0, 2: 0 };
+                    
+                    // Só puxa da fila para a quadra se a pessoa puxada for um inocente
+                    if (!court[1] && innocentCount > 0) {
+                        court[1] = queue.shift();
+                        innocentCount--;
+                    }
+                    if (!court[2] && innocentCount > 0) {
+                        court[2] = queue.shift();
+                        innocentCount--;
+                    }
+                }
+
+                playerNameDisplay.textContent = myPlayerName;
+                saveData();
+                render();
+                alert("Nome alterado. Como penalidade, você foi movido para o final da fila e a vaga ficou para o próximo.");
+            }
+        }
+    }
+});
 
 function addPlayer() {
     if (!isAdmin && myPlayerName) {
@@ -233,8 +302,10 @@ function addPlayer() {
         
         if (!isAdmin) {
             myPlayerName = name;
+            correctionCount = 0; 
             playerNameDisplay.textContent = myPlayerName;
             identifyBtn.style.display = "none"; 
+            editIdentityBtn.style.display = "inline-block";
         }
         
         render();
@@ -296,8 +367,20 @@ function resetAll() {
         court = { 1: null, 2: null };
         scores = { 1: 0, 2: 0 };
         queue = [];
+        
+        myPlayerName = null;
+        correctionCount = 0;
+        
         localStorage.removeItem(`voleiData_${currentLocal}`);
+        localStorage.removeItem(`voleiMyName_${currentLocal}`);
+        localStorage.removeItem(`voleiCorrection_${currentLocal}`);
+        
+        playerNameDisplay.textContent = "Ninguém";
+        identifyBtn.style.display = "inline-block";
+        editIdentityBtn.style.display = "none";
+        
         render();
+        alert("Grade zerada e aparelhos desvinculados com sucesso!");
     }
 }
 
