@@ -30,6 +30,14 @@
 
         <h2>🏐 Grade - <span id="parkNameDisplay">Local</span></h2>
 
+        <div class="identity-bar">
+            <div class="identity-info">
+                <span>👤 Aparelho vinculado a:</span>
+                <strong id="playerNameDisplay">Ninguém</strong>
+            </div>
+            <button id="identifyBtn" class="btn-identify">Sou Eu</button>
+        </div>
+
         <div id="scorekeeperBanner" class="scorekeeper-banner scorekeeper-only-block">
             🏐 Você é o próximo! O controle do placar está com você.
         </div>
@@ -57,6 +65,7 @@
 
         <div class="card admin-only-block">
             <h3 style="border: none;">Gerenciamento Restrito</h3>
+            <button class="btn-reset" id="unlockDeviceBtn" style="background: #f39c12; margin-bottom: 10px;">🔓 Desvincular Este Aparelho</button>
             <button class="btn-reset" id="resetBtn">Zerar Grade Deste Parque</button>
         </div>
 

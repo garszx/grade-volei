@@ -18,8 +18,6 @@ const locaisPasswords = {
 let court = { 1: null, 2: null };
 let scores = { 1: 0, 2: 0 }; 
 let queue = [];
-
-// NOVO: Em vez de verdadeiro/falso, salvamos o nome real que a pessoa digitou
 let myPlayerName = null; 
 
 function loadData() {
@@ -27,9 +25,12 @@ function loadData() {
     const storageKey = `voleiData_${currentLocal}`; 
     const savedData = localStorage.getItem(storageKey);
     
-    // Recupera o nome que o dono do celular usou
     const savedMyName = localStorage.getItem(`voleiMyName_${currentLocal}`);
-    if (savedMyName) myPlayerName = savedMyName;
+    if (savedMyName) {
+        myPlayerName = savedMyName;
+        document.getElementById("playerNameDisplay").textContent = myPlayerName;
+        document.getElementById("identifyBtn").style.display = "none";
+    }
     
     if (savedData) {
         const parsed = JSON.parse(savedData);
@@ -45,7 +46,9 @@ function saveData() {
     const dataToSave = { court, scores, queue };
     localStorage.setItem(storageKey, JSON.stringify(dataToSave)); 
     
-    if (myPlayerName) localStorage.setItem(`voleiMyName_${currentLocal}`, myPlayerName);
+    if (myPlayerName) {
+        localStorage.setItem(`voleiMyName_${currentLocal}`, myPlayerName);
+    }
 }
 
 const courtList = document.getElementById("courtList");
@@ -54,14 +57,16 @@ const inputElement = document.getElementById("newPlayer");
 const addBtn = document.getElementById("addBtn");
 const resetBtn = document.getElementById("resetBtn");
 const loginBtn = document.getElementById("loginBtn");
+const identifyBtn = document.getElementById("identifyBtn");
+const playerNameDisplay = document.getElementById("playerNameDisplay");
 const resetScoreBtn = document.getElementById("resetScoreBtn"); 
+const unlockDeviceBtn = document.getElementById("unlockDeviceBtn");
 
 function render() {
     courtList.innerHTML = "";
     queueList.innerHTML = "";
     
-    // NOVO: Verifica se o celular atual é o dono do 1º lugar da fila
-    if (queue.length > 0 && myPlayerName && queue[0] === myPlayerName && !isAdmin) {
+    if (queue.length > 0 && myPlayerName && queue[0].toLowerCase() === myPlayerName.toLowerCase() && !isAdmin) {
         document.body.classList.add("is-scorekeeper");
     } else {
         document.body.classList.remove("is-scorekeeper");
@@ -73,25 +78,27 @@ function render() {
     queue.forEach((player, index) => {
         const li = document.createElement("li");
         const nameSpan = document.createElement("span");
-        nameSpan.innerHTML = `<strong>${index + 1}º</strong> - ${player}`;
+        
+        const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
+        nameSpan.innerHTML = `<strong>${index + 1}º</strong> - ${player}${isMe}`;
         
         const btnGroup = document.createElement("div");
         btnGroup.className = "btn-group";
         
         const btnUp = document.createElement("button");
-        btnUp.className = "btn-move admin-only"; // Mover é SÓ Admin
+        btnUp.className = "btn-move admin-only";
         btnUp.innerHTML = "⬆️"; 
         btnUp.onclick = () => moveUp(index);
         if (index === 0) btnUp.style.display = "none"; 
 
         const btnDown = document.createElement("button");
-        btnDown.className = "btn-move admin-only"; // Mover é SÓ Admin
+        btnDown.className = "btn-move admin-only";
         btnDown.innerHTML = "⬇️";
         btnDown.onclick = () => moveDown(index);
         if (index === queue.length - 1) btnDown.style.display = "none"; 
 
         const actionSelect = document.createElement("select");
-        actionSelect.className = "action-select admin-only"; // Excluir pessoas é SÓ Admin
+        actionSelect.className = "action-select admin-only";
         actionSelect.innerHTML = `
             <option value="" disabled selected>Ações...</option>
             <option value="v1">Ir p/ Vaga 1</option>
@@ -124,7 +131,6 @@ function renderSlot(slotNumber) {
 
     if (player) {
         li.className = "court-item";
-        
         const infoDiv = document.createElement("div");
         infoDiv.innerHTML = `<span>🏐 <strong>Vaga ${slotNumber}:</strong> ${player}</span>`;
         
@@ -132,7 +138,7 @@ function renderSlot(slotNumber) {
         scoreDiv.className = "score-board";
         
         const btnMinus = document.createElement("button");
-        btnMinus.className = "btn-score scorekeeper-only"; // Marcador pode usar
+        btnMinus.className = "btn-score scorekeeper-only";
         btnMinus.textContent = "-";
         btnMinus.onclick = () => updateScore(slotNumber, -1);
 
@@ -142,7 +148,7 @@ function renderSlot(slotNumber) {
         scoreDisplay.textContent = currentScore;
 
         const btnPlus = document.createElement("button");
-        btnPlus.className = "btn-score scorekeeper-only"; // Marcador pode usar
+        btnPlus.className = "btn-score scorekeeper-only";
         btnPlus.textContent = "+";
         btnPlus.onclick = () => updateScore(slotNumber, 1);
 
@@ -154,12 +160,12 @@ function renderSlot(slotNumber) {
         btnGroup.className = "btn-group";
 
         const btnLost = document.createElement("button");
-        btnLost.className = "btn-action scorekeeper-only"; // Marcador pode usar
+        btnLost.className = "btn-action scorekeeper-only"; 
         btnLost.textContent = "Perdeu";
         btnLost.onclick = () => playerLost(slotNumber);
 
         const btnExit = document.createElement("button");
-        btnExit.className = "btn-remove scorekeeper-only"; // Marcador pode usar
+        btnExit.className = "btn-remove scorekeeper-only"; 
         btnExit.textContent = "Sair";
         btnExit.onclick = () => removeFromSlot(slotNumber);
 
@@ -180,17 +186,40 @@ function updateScore(slot, change) {
     scores[slot] += change;
     if (scores[slot] < 0) scores[slot] = 0;
     if (scores[slot] > 25) scores[slot] = 25;
-    
-    const display = document.getElementById(`score-display-${slot}`);
-    if (display) {
-        display.textContent = scores[slot];
-    }
+    document.getElementById(`score-display-${slot}`).textContent = scores[slot];
     saveData();
+}
+
+identifyBtn.addEventListener("click", () => {
+    const nomeInput = prompt("Qual o seu nome na fila? (Escreva exatamente como está na lista)");
+    if (nomeInput && nomeInput.trim() !== "") {
+        const confirmacao = confirm(`ATENÇÃO: Seu celular ficará travado como "${nomeInput.trim()}". Você não poderá mudar isso depois. Confirma?`);
+        if (confirmacao) {
+            myPlayerName = nomeInput.trim();
+            playerNameDisplay.textContent = myPlayerName;
+            identifyBtn.style.display = "none";
+            saveData();
+            render();
+        }
+    }
+});
+
+if (unlockDeviceBtn) {
+    unlockDeviceBtn.addEventListener("click", () => {
+        if (confirm("Liberar este celular para vincular outro nome?")) {
+            myPlayerName = null;
+            localStorage.removeItem(`voleiMyName_${currentLocal}`);
+            playerNameDisplay.textContent = "Ninguém";
+            identifyBtn.style.display = "inline-block";
+            render();
+            alert("Aparelho desvinculado! Você já pode usar o botão 'Sou Eu' novamente.");
+        }
+    });
 }
 
 function addPlayer() {
     if (!isAdmin && myPlayerName) {
-        alert(`Você já adicionou o nome "${myPlayerName}". Aguarde sua vez!`);
+        alert(`Você já está identificado como "${myPlayerName}". Aguarde sua vez!`);
         return; 
     }
 
@@ -202,9 +231,10 @@ function addPlayer() {
         
         inputElement.value = "";
         
-        // NOVO: Vincula o nome digitado ao celular
         if (!isAdmin) {
             myPlayerName = name;
+            playerNameDisplay.textContent = myPlayerName;
+            identifyBtn.style.display = "none"; 
         }
         
         render();
@@ -266,7 +296,6 @@ function resetAll() {
         court = { 1: null, 2: null };
         scores = { 1: 0, 2: 0 };
         queue = [];
-        
         localStorage.removeItem(`voleiData_${currentLocal}`);
         render();
     }
@@ -291,35 +320,26 @@ loginBtn.addEventListener("click", () => {
         document.body.classList.remove("is-admin");
         isAdmin = false;
         loginBtn.textContent = "Área Admin";
-        render(); // Re-renderiza para checar se ele volta a ser marcador normal
+        render();
     } else {
         if (!isOnline) {
             alert("Você precisa de internet para acessar o modo Admin.");
             return; 
         }
-        
-        const nomeDoParqueAtual = locaisNames[currentLocal];
-        const senha = prompt(`Digite a senha do administrador para o ${nomeDoParqueAtual}:`);
-        const senhaCorretaDesteParque = locaisPasswords[currentLocal];
-
-        if (senha === senhaCorretaDesteParque) {
+        const senha = prompt(`Digite a senha do administrador para o ${locaisNames[currentLocal]}:`);
+        if (senha === locaisPasswords[currentLocal]) {
             document.body.classList.add("is-admin");
             isAdmin = true;
             loginBtn.textContent = "Sair do Admin";
-            render(); // Re-renderiza para esconder as coisas do marcador comum
+            render();
         } else {
             alert("Senha incorreta!");
         }
     }
 });
 
-function selectLocal(localId) {
-    window.location.href = `?local=${localId}`;
-}
-
-function backToLobby() {
-    window.location.href = window.location.pathname; 
-}
+function selectLocal(localId) { window.location.href = `?local=${localId}`; }
+function backToLobby() { window.location.href = window.location.pathname; }
 
 let isOnline = navigator.onLine; 
 const statusIndicator = document.getElementById("connectionStatus");
@@ -331,14 +351,12 @@ function updateNetworkStatus() {
         if (isAdmin) document.body.classList.add("is-admin");
         addBtn.disabled = false;
         inputElement.disabled = false;
-        inputElement.placeholder = "Nome do jogador";
     } else {
         statusIndicator.textContent = "🔴 Offline";
         statusIndicator.style.color = "#ff4757";
         document.body.classList.remove("is-admin");
         addBtn.disabled = true;
         inputElement.disabled = true;
-        inputElement.placeholder = "Sem conexão...";
     }
 }
 
@@ -354,7 +372,6 @@ function initApp() {
         lobbyContainer.style.display = "none";
         appContainer.style.display = "block";
         parkNameDisplay.textContent = locaisNames[currentLocal]; 
-        
         loadData();
         updateNetworkStatus();
         render();
