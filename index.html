@@ -32,15 +32,18 @@
 
         <div class="identity-bar">
             <div id="user-logged-out" style="width: 100%;">
-                <button onclick="loginGoogle()" class="btn-identify" style="width: 100%; padding: 12px; font-size: 14px;">
+                <button onclick="loginGoogle()" class="btn-identify" style="width: 100%; padding: 12px;">
                     🔑 Fazer Login com Google para Jogar
                 </button>
             </div>
 
             <div id="user-logged-in" style="display: none; width: 100%; justify-content: space-between; align-items: center;">
-                <div class="identity-info">
+                <div class="identity-info" style="display: flex; align-items: center; gap: 10px;">
                     <span>👤 Jogador:</span>
                     <strong id="playerNameDisplay">Carregando...</strong>
+                    <button onclick="definirNovoApelido()" style="background: none; border: 1px solid #3498db; color: #3498db; padding: 2px 6px; border-radius: 4px; font-size: 10px; cursor: pointer;">
+                        Alterar Apelido
+                    </button>
                 </div>
                 <button onclick="logout()" style="background: none; border: 1px solid #ff4757; color: #ff4757; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">
                     Sair
@@ -80,14 +83,16 @@
 
         <div class="card admin-only-block">
             <h3 style="border: none;">Gerenciamento Restrito</h3>
-            <button class="btn-reset" id="resetBtn">Zerar Grade Deste Parque</button>
+            <button id="resetBtn" class="btn-reset">Zerar Grade Deste Parque</button>
         </div>
 
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script> <script src="script.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    
+    <script src="script.js"></script>
 
 </body>
 </html>

@@ -17,25 +17,27 @@ const auth = firebase.auth();
 const provider = new firebase.auth.GoogleAuthProvider();
 
 // ==========================================
-// 2. ESTADO E REFERÊNCIAS
+// 2. ESTADO E VARIÁVEIS GLOBAIS
 // ==========================================
 const urlParams = new URLSearchParams(window.location.search);
 const currentLocal = urlParams.get('local'); 
 const dbRef = currentLocal ? database.ref('parques/' + currentLocal) : null;
-const profilesRef = currentLocal ? database.ref('parques/' + currentLocal + '/profiles') : null;
 
-let court = { 1: null, 2: null }; // Agora guarda UIDs
-let queue = []; // Agora guarda UIDs
-let scores = { 1: 0, 2: 0 };
-let allProfiles = {}; // Cache de apelidos { uid: "Apelido" }
-let myUID = null;
-let isAdmin = false;
-
-const locaisNames = { 'ramiro': 'Ramiro', 'artex': 'Artex', 'itoupavas': 'Itoupavas', 'aguaverde': 'Água Verde' };
+const locaisNames = { 'ramiro': 'Parque Ramiro Ruediger', 'artex': 'Artex (Garcia)', 'itoupavas': 'Parque das Itoupavas', 'aguaverde': 'Terminal Água Verde' };
 const locaisPasswords = { 'ramiro': 'ramiro123', 'artex': 'artex123', 'itoupavas': 'itoupavas123', 'aguaverde': 'aguaverde123' };
 
+let court = { 1: null, 2: null };
+let queue = [];
+let scores = { 1: 0, 2: 0 };
+let myPlayerName = null; 
+let isAdmin = false;
+
+const playerNameDisplay = document.getElementById("playerNameDisplay");
+const addPlayerGroup = document.getElementById("addPlayerGroup");
+const quickJoinBtn = document.getElementById("quickJoinBtn");
+
 // ==========================================
-// 3. AUTENTICAÇÃO E PERFIL
+// 3. SISTEMA DE IDENTIDADE (FIX: APELIDO)
 // ==========================================
 
 auth.onAuthStateChanged(async (user) => {
@@ -43,136 +45,136 @@ auth.onAuthStateChanged(async (user) => {
     const loggedInUI = document.getElementById("user-logged-in");
 
     if (user) {
-        myUID = user.uid;
-        
-        // Verifica se o usuário já tem um apelido salvo
-        const snapshot = await profilesRef.child(myUID).once('value');
-        let profile = snapshot.val();
+        const userRef = database.ref('users/' + user.uid);
+        const snapshot = await userRef.once('value');
+        const userData = snapshot.val();
 
-        if (!profile || !profile.nickname) {
-            // Primeiro login: pede apelido
-            let nick = prompt("Como a galera te chama na quadra? (Apelido)");
-            if (!nick || nick.trim() === "") nick = user.displayName.split(" ")[0];
-            
-            profile = { nickname: nick.trim(), originalName: user.displayName };
-            profilesRef.child(myUID).set(profile);
+        // Se já existe um apelido no banco, usa ele. Se não, força a criação.
+        if (userData && userData.nickname) {
+            myPlayerName = userData.nickname;
+        } else {
+            await definirNovoApelido(user);
         }
 
-        document.getElementById("playerNameDisplay").textContent = profile.nickname;
+        if (playerNameDisplay) playerNameDisplay.textContent = myPlayerName;
         if (loggedOutUI) loggedOutUI.style.display = "none";
         if (loggedInUI) loggedInUI.style.display = "flex";
     } else {
-        myUID = null;
+        myPlayerName = null;
         if (loggedOutUI) loggedOutUI.style.display = "block";
         if (loggedInUI) loggedInUI.style.display = "none";
     }
     updateFrictionlessUI();
+    render();
 });
 
-function loginGoogle() { auth.signInWithPopup(provider); }
-function logout() { if(confirm("Sair da conta?")) auth.signOut(); }
+// Função para definir ou trocar o apelido
+async function definirNovoApelido(user = auth.currentUser) {
+    if (!user) return;
+    
+    let nick = prompt(`Como você quer ser chamado na grade?`, myPlayerName || "");
+    
+    if (!nick || nick.trim() === "") {
+        if (!myPlayerName) nick = user.displayName.split(" ")[0]; // Padrão se for vazio
+        else return; // Cancela se já tiver um e deixou vazio
+    }
+
+    myPlayerName = nick.trim();
+    await database.ref('users/' + user.uid).set({ 
+        nickname: myPlayerName, 
+        email: user.email 
+    });
+    
+    if (playerNameDisplay) playerNameDisplay.textContent = myPlayerName;
+    updateFrictionlessUI();
+    render();
+}
+
+function loginGoogle() {
+    auth.signInWithPopup(provider).catch(e => alert("Erro ao logar: " + e.message));
+}
+
+function logout() { if(confirm("Deseja sair?")) auth.signOut(); }
 
 // ==========================================
-// 4. SINCRONIZAÇÃO EM TEMPO REAL
+// 4. LÓGICA DE NAVEGAÇÃO
 // ==========================================
+function selectLocal(localId) { window.location.href = `?local=${localId}`; }
+function backToLobby() { window.location.href = window.location.pathname; }
 
+// ==========================================
+// 5. BANCO DE DADOS
+// ==========================================
 function startDatabaseListener() {
     if (!dbRef) return;
-    
     dbRef.on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
             court = data.court || { 1: null, 2: null };
             queue = data.queue || [];
             scores = data.scores || { 1: 0, 2: 0 };
-            allProfiles = data.profiles || {};
+        } else {
+            court = { 1: null, 2: null }; queue = []; scores = { 1: 0, 2: 0 };
         }
         render();
     });
 }
 
-function saveData() {
-    if (!dbRef) return;
-    dbRef.update({ court, queue, scores });
-}
+function saveData() { if (dbRef) dbRef.set({ court, queue, scores }); }
 
 // ==========================================
-// 5. RENDERIZAÇÃO (MOSTRANDO APELIDOS)
+// 6. INTERFACE (UI)
 // ==========================================
-
-function getNick(uid) {
-    if (!uid) return "Vazio";
-    // Se for um convidado (string manual), retorna o nome. Se for UID, busca no perfil.
-    return allProfiles[uid] ? allProfiles[uid].nickname : uid;
+function updateFrictionlessUI() {
+    if (isAdmin) {
+        if (addPlayerGroup) addPlayerGroup.style.display = "flex";
+        if (quickJoinBtn) quickJoinBtn.style.display = "none";
+    } else if (myPlayerName) {
+        if (addPlayerGroup) addPlayerGroup.style.display = "none";
+        if (quickJoinBtn) {
+            quickJoinBtn.style.display = "block";
+            quickJoinBtn.textContent = `👉 Entrar na Fila como ${myPlayerName}`;
+        }
+    } else {
+        if (addPlayerGroup) addPlayerGroup.style.display = "none";
+        if (quickJoinBtn) quickJoinBtn.style.display = "none";
+    }
 }
 
 function render() {
     const courtList = document.getElementById("courtList");
     const queueList = document.getElementById("queueList");
     if (!courtList || !queueList) return;
+    courtList.innerHTML = ""; queueList.innerHTML = "";
 
-    courtList.innerHTML = "";
-    queueList.innerHTML = "";
-
-    // Placar / Marcador
-    if (queue.length > 0 && myUID && queue[0] === myUID && !isAdmin) {
+    if (queue.length > 0 && myPlayerName && queue[0].toLowerCase() === myPlayerName.toLowerCase() && !isAdmin) {
         document.body.classList.add("is-scorekeeper");
     } else {
         document.body.classList.remove("is-scorekeeper");
     }
 
-    renderSlot(1);
-    renderSlot(2);
+    renderSlot(1); renderSlot(2);
 
-    queue.forEach((uid, index) => {
+    queue.forEach((player, index) => {
         const li = document.createElement("li");
-        const isMe = (myUID && uid === myUID) ? " (Você)" : "";
-        
-        li.innerHTML = `<span><strong>${index + 1}º</strong> - ${getNick(uid)}${isMe}</span>`;
-        
-        const btnGroup = document.createElement("div");
-        btnGroup.className = "btn-group";
-
+        const isMe = (myPlayerName && player.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
+        li.innerHTML = `<span><strong>${index + 1}º</strong> - ${player}${isMe}</span>`;
         if (isAdmin) {
-            // Botão de Renomear (Exclusivo Admin)
-            const btnEdit = document.createElement("button");
-            btnEdit.innerHTML = "✏️";
-            btnEdit.className = "btn-move";
-            btnEdit.onclick = () => renamePlayer(uid);
-            btnGroup.appendChild(btnEdit);
-
-            btnGroup.innerHTML += `
-                <button class="btn-move" onclick="moveUp(${index})">⬆️</button>
-                <select class="action-select" onchange="adminAction(${index}, this.value)">
-                    <option disabled selected>...</option>
-                    <option value="v1">V1</option>
-                    <option value="v2">V2</option>
-                    <option value="sair">Remover</option>
-                </select>`;
+            const bg = document.createElement("div"); bg.className = "btn-group";
+            bg.innerHTML = `<button class="btn-move" onclick="moveUp(${index})">⬆️</button><button class="btn-move" onclick="moveDown(${index})">⬇️</button><select class="action-select" onchange="adminAction(${index}, this.value)"><option disabled selected>Ações...</option><option value="v1">Mover V1</option><option value="v2">Mover V2</option><option value="sair">Remover</option></select>`;
+            li.appendChild(bg);
         }
-        li.appendChild(btnGroup);
         queueList.appendChild(li);
     });
 }
 
 function renderSlot(slot) {
-    const uid = court[slot];
+    const p = court[slot];
     const li = document.createElement("li");
-    if (uid) {
+    if (p) {
         li.className = "court-item";
-        const isMe = (myUID && uid === myUID) ? " (Você)" : "";
-        li.innerHTML = `
-            <div>🏐 <strong>Vaga ${slot}:</strong> ${getNick(uid)}${isMe}</div>
-            <div class="score-board">
-                <button class="btn-score scorekeeper-only" onclick="updateScore(${slot},-1)">-</button>
-                <span class="score-value">${scores[slot]}</span>
-                <button class="btn-score scorekeeper-only" onclick="updateScore(${slot},1)">+</button>
-            </div>
-            <div class="btn-group">
-                ${isAdmin ? `<button class="btn-move" onclick="renamePlayer('${uid}')">✏️</button>` : ''}
-                <button class="btn-action scorekeeper-only" onclick="playerLost(${slot})">Perdeu</button>
-                <button class="btn-remove scorekeeper-only" onclick="removeFromSlot(${slot})">Sair</button>
-            </div>`;
+        const isMe = (myPlayerName && p.toLowerCase() === myPlayerName.toLowerCase()) ? " (Você)" : "";
+        li.innerHTML = `<div>🏐 <strong>Vaga ${slot}:</strong> ${p}${isMe}</div><div class="score-board"><button class="btn-score scorekeeper-only" onclick="updateScore(${slot},-1)">-</button><span class="score-value">${scores[slot]}</span><button class="btn-score scorekeeper-only" onclick="updateScore(${slot},1)">+</button></div><div class="btn-group"><button class="btn-action scorekeeper-only" onclick="playerLost(${slot})">Perdeu</button><button class="btn-remove scorekeeper-only" onclick="removeFromSlot(${slot})">Sair</button></div>`;
     } else {
         li.className = "slot-empty"; li.innerHTML = `Vaga ${slot}: Vazia`;
     }
@@ -180,54 +182,32 @@ function renderSlot(slot) {
 }
 
 // ==========================================
-// 6. FUNÇÃO DE RENOMEAR (A MÁGICA DO ADMIN)
+// 7. AÇÕES
 // ==========================================
-
-function renamePlayer(uidOrName) {
-    // Se for UID (usuário logado), altera no perfil global do banco
-    // Se for string (convidado manual), altera direto na lista
-    const newNick = prompt("Novo apelido fixo para este jogador:");
-    if (!newNick || newNick.trim() === "") return;
-
-    if (allProfiles[uidOrName]) {
-        // Altera no banco de perfis (fica para sempre)
-        profilesRef.child(uidOrName).update({ nickname: newNick.trim() });
-    } else {
-        // É um convidado manual, precisamos trocar o texto na fila/quadra
-        if (court[1] === uidOrName) court[1] = newNick.trim();
-        else if (court[2] === uidOrName) court[2] = newNick.trim();
-        else {
-            const idx = queue.indexOf(uidOrName);
-            if (idx !== -1) queue[idx] = newNick.trim();
-        }
+if (quickJoinBtn) {
+    quickJoinBtn.addEventListener("click", () => {
+        if (!myPlayerName) return;
+        const l = myPlayerName.toLowerCase();
+        if ((court[1] && court[1].toLowerCase() === l) || (court[2] && court[2].toLowerCase() === l) || queue.some(p => p.toLowerCase() === l)) return alert("Você já está na grade!");
+        if (!court[1]) court[1] = myPlayerName; else if (!court[2]) court[2] = myPlayerName; else queue.push(myPlayerName);
         saveData();
-    }
+    });
 }
 
-// ==========================================
-// 7. AÇÕES GERAIS
-// ==========================================
-
-function updateFrictionlessUI() {
-    const addGroup = document.getElementById("addPlayerGroup");
-    const quickBtn = document.getElementById("quickJoinBtn");
-    if (isAdmin) {
-        addGroup.style.display = "flex"; quickBtn.style.display = "none";
-    } else if (myUID) {
-        addGroup.style.display = "none";
-        quickBtn.style.display = "block";
-        quickBtn.textContent = `👉 Entrar na Fila`;
-    } else {
-        addGroup.style.display = "none"; quickBtn.style.display = "none";
+function updateScore(s, c) { scores[s] += c; if (scores[s] < 0) scores[s] = 0; saveData(); }
+function playerLost(s) { if (court[s]) { queue.push(court[s]); court[s] = null; scores = { 1: 0, 2: 0 }; if (queue.length > 0) court[s] = queue.shift(); saveData(); } }
+function removeFromSlot(s) { if (court[s]) { queue.push(court[s]); court[s] = null; scores = { 1: 0, 2: 0 }; saveData(); } }
+function adminAction(i, a) {
+    if (a === "sair") { queue.splice(i, 1); } 
+    else {
+        const p = queue.splice(i, 1)[0];
+        if (a === "v1") { if (court[1]) queue.push(court[1]); court[1] = p; } 
+        else { if (court[2]) queue.push(court[2]); court[2] = p; }
     }
+    scores = { 1: 0, 2: 0 }; saveData();
 }
-
-document.getElementById("quickJoinBtn").onclick = () => {
-    if (!myUID) return;
-    if (court[1] === myUID || court[2] === myUID || queue.includes(myUID)) return alert("Já está na grade!");
-    if (!court[1]) court[1] = myUID; else if (!court[2]) court[2] = myUID; else queue.push(myUID);
-    saveData();
-};
+function moveUp(i) { if(i>0){ const t=queue[i]; queue[i]=queue[i-1]; queue[i-1]=t; saveData(); } }
+function moveDown(i) { if(i<queue.length-1){ const t=queue[i]; queue[i]=queue[i+1]; queue[i+1]=t; saveData(); } }
 
 function addPlayer() {
     const input = document.getElementById("newPlayer");
@@ -238,38 +218,30 @@ function addPlayer() {
     }
 }
 
-// Admin Actions
-function updateScore(s, c) { scores[s] += c; if (scores[s] < 0) scores[s] = 0; saveData(); }
-function playerLost(s) { queue.push(court[s]); court[s] = null; scores = {1:0, 2:0}; if(queue.length > 0) court[s] = queue.shift(); saveData(); }
-function removeFromSlot(s) { queue.push(court[s]); court[s] = null; scores = {1:0, 2:0}; saveData(); }
-function adminAction(i, act) {
-    const p = queue.splice(i, 1)[0];
-    if (act === "v1") { if(court[1]) queue.push(court[1]); court[1] = p; }
-    else if (act === "v2") { if(court[2]) queue.push(court[2]); court[2] = p; }
-    scores = {1:0, 2:0}; saveData();
+// ADMIN LOGIN
+const loginBtn = document.getElementById("loginBtn");
+if (loginBtn) {
+    loginBtn.addEventListener("click", () => {
+        if (isAdmin) { isAdmin = false; document.body.classList.remove("is-admin"); loginBtn.textContent = "Área Admin"; }
+        else {
+            const p = prompt(`Senha para ${locaisNames[currentLocal]}:`);
+            if (p === locaisPasswords[currentLocal]) { isAdmin = true; document.body.classList.add("is-admin"); loginBtn.textContent = "Sair Admin"; }
+            else alert("Senha incorreta!");
+        }
+        updateFrictionlessUI(); render();
+    });
 }
-function moveUp(i) { if(i>0) { const t=queue[i]; queue[i]=queue[i-1]; queue[i-1]=t; saveData(); } }
 
-// Inicialização
-function selectLocal(l) { window.location.href = `?local=${l}`; }
-function backToLobby() { window.location.href = window.location.pathname; }
+document.getElementById("resetBtn")?.addEventListener("click", () => { if (confirm("Zerar grade?")) { court={1:null,2:null}; queue=[]; scores={1:0,2:0}; saveData(); } });
+document.getElementById("addBtn")?.addEventListener("click", addPlayer);
+document.getElementById("newPlayer")?.addEventListener("keypress", (e) => { if (e.key === "Enter") addPlayer(); });
 
-document.getElementById("loginBtn").onclick = () => {
-    if (isAdmin) { isAdmin = false; document.body.classList.remove("is-admin"); }
-    else {
-        const p = prompt("Senha Admin:");
-        if (p === locaisPasswords[currentLocal]) { isAdmin = true; document.body.classList.add("is-admin"); }
+function initApp() {
+    if (currentLocal && locaisNames[currentLocal]) {
+        document.getElementById("lobby-container").style.display = "none";
+        document.getElementById("app-container").style.display = "block";
+        document.getElementById("parkNameDisplay").textContent = locaisNames[currentLocal];
+        startDatabaseListener();
     }
-    updateFrictionlessUI(); render();
-};
-
-document.getElementById("resetBtn").onclick = () => { if(confirm("Zerar grade?")) { court={1:null, 2:null}; queue=[]; scores={1:0, 2:0}; saveData(); } };
-document.getElementById("addBtn").onclick = addPlayer;
-document.getElementById("newPlayer").onkeypress = (e) => { if(e.key === "Enter") addPlayer(); };
-
-if (currentLocal) {
-    document.getElementById("lobby-container").style.display = "none";
-    document.getElementById("app-container").style.display = "block";
-    document.getElementById("parkNameDisplay").textContent = locaisNames[currentLocal];
-    startDatabaseListener();
 }
+initApp();
