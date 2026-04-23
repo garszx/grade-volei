@@ -1,58 +1,33 @@
-body {
-    font-family: Arial, sans-serif;
-    background-color: #121212; 
-    color: #e0e0e0; 
-    padding: 0 0 20px 0; 
-    max-width: 500px;
-    margin: auto;
-}
+body { font-family: Arial, sans-serif; background-color: #121212; color: #e0e0e0; padding: 0 0 20px 0; max-width: 500px; margin: auto; }
 
-/* Estilos do Lobby de Seleção */
+/* Lobby */
 #lobby-container { padding: 40px 20px; }
-.lobby-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.btn-lobby {
-    background: #1e1e1e;
-    color: white;
-    border: 1px solid #333;
-    padding: 20px;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s;
-    text-align: left;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-}
+.lobby-grid { display: flex; flex-direction: column; gap: 15px; }
+.btn-lobby { background: #1e1e1e; color: white; border: 1px solid #333; padding: 20px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; text-align: left; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
 .btn-lobby:hover { background: #2a2a2a; border-color: #3498db; }
 
 /* Barra Superior */
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 15px;
-    background: #1a1a1a;
-    border-bottom: 1px solid #333;
-    margin-bottom: 20px;
-    gap: 10px;
-}
+.top-bar { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #1a1a1a; border-bottom: 1px solid #333; margin-bottom: 20px; gap: 10px; }
 .btn-back { background: #444; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px;}
 .status-indicator { font-weight: bold; font-size: 14px; text-align: center; flex: 1; }
 .btn-login { background: #333; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-h2 { text-align: center; color: #ffffff; margin-bottom: 30px; }
+h2 { text-align: center; color: #ffffff; margin-bottom: 20px; }
 
-.card {
-    background: #1e1e1e; 
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3); 
+/* NOVO: Estilo do Banner do Marcador */
+.scorekeeper-banner {
+    background: #27ae60;
+    color: white;
+    text-align: center;
+    padding: 12px;
+    font-weight: bold;
     margin: 0 20px 20px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    font-size: 14px;
 }
+
+.card { background: #1e1e1e; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin: 0 20px 20px 20px; }
 
 .court-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 15px; }
 .court-header h3 { border-bottom: none; padding-bottom: 0; margin: 0; }
@@ -91,6 +66,16 @@ input:disabled { background-color: #1a1a1a; cursor: not-allowed; }
 .slot-empty { background-color: #2a2a2a; color: #888; font-style: italic; justify-content: center; }
 .btn-reset { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; font-size: 14px; }
 
-.admin-only, .admin-only-block { display: none !important; }
+/* REGRAS DE SEGURANÇA E ACESSO */
+/* Esconde tudo por padrão */
+.admin-only, .admin-only-block, .scorekeeper-only, .scorekeeper-only-block { display: none !important; }
+
+/* Se o celular for do Admin, mostra TUDO (Admin + Marcador) */
 body.is-admin .admin-only { display: inline-flex !important; }
 body.is-admin .admin-only-block { display: block !important; }
+body.is-admin .scorekeeper-only { display: inline-flex !important; }
+body.is-admin .scorekeeper-only-block { display: none !important; } /* Admin não precisa ver o banner verde */
+
+/* Se o celular for do Marcador da vez (1º da Fila), mostra SÓ o básico */
+body.is-scorekeeper .scorekeeper-only { display: inline-flex !important; }
+body.is-scorekeeper .scorekeeper-only-block { display: block !important; }

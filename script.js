@@ -1,4 +1,3 @@
-// --- SISTEMA DE ROTEAMENTO (MULTITENANCY) ---
 const urlParams = new URLSearchParams(window.location.search);
 const currentLocal = urlParams.get('local'); 
 
@@ -9,7 +8,6 @@ const locaisNames = {
     'aguaverde': 'Terminal Água Verde'
 };
 
-// NOVO: Dicionário de senhas exclusivas para cada parque
 const locaisPasswords = {
     'ramiro': 'ramiro123',
     'artex': 'artex123',
@@ -17,31 +15,37 @@ const locaisPasswords = {
     'aguaverde': 'aguaverde123'
 };
 
-// --- DADOS DA QUADRA ---
 let court = { 1: null, 2: null };
 let scores = { 1: 0, 2: 0 }; 
 let queue = [];
-let hasAddedName = false; 
+
+// NOVO: Em vez de verdadeiro/falso, salvamos o nome real que a pessoa digitou
+let myPlayerName = null; 
 
 function loadData() {
     if (!currentLocal) return; 
     const storageKey = `voleiData_${currentLocal}`; 
     const savedData = localStorage.getItem(storageKey);
     
+    // Recupera o nome que o dono do celular usou
+    const savedMyName = localStorage.getItem(`voleiMyName_${currentLocal}`);
+    if (savedMyName) myPlayerName = savedMyName;
+    
     if (savedData) {
         const parsed = JSON.parse(savedData);
         court = parsed.court || court;
         scores = parsed.scores || scores;
         queue = parsed.queue || queue;
-        hasAddedName = parsed.hasAddedName || false;
     }
 }
 
 function saveData() {
     if (!currentLocal) return;
     const storageKey = `voleiData_${currentLocal}`;
-    const dataToSave = { court, scores, queue, hasAddedName };
+    const dataToSave = { court, scores, queue };
     localStorage.setItem(storageKey, JSON.stringify(dataToSave)); 
+    
+    if (myPlayerName) localStorage.setItem(`voleiMyName_${currentLocal}`, myPlayerName);
 }
 
 const courtList = document.getElementById("courtList");
@@ -55,6 +59,14 @@ const resetScoreBtn = document.getElementById("resetScoreBtn");
 function render() {
     courtList.innerHTML = "";
     queueList.innerHTML = "";
+    
+    // NOVO: Verifica se o celular atual é o dono do 1º lugar da fila
+    if (queue.length > 0 && myPlayerName && queue[0] === myPlayerName && !isAdmin) {
+        document.body.classList.add("is-scorekeeper");
+    } else {
+        document.body.classList.remove("is-scorekeeper");
+    }
+
     renderSlot(1);
     renderSlot(2);
 
@@ -67,19 +79,19 @@ function render() {
         btnGroup.className = "btn-group";
         
         const btnUp = document.createElement("button");
-        btnUp.className = "btn-move admin-only";
+        btnUp.className = "btn-move admin-only"; // Mover é SÓ Admin
         btnUp.innerHTML = "⬆️"; 
         btnUp.onclick = () => moveUp(index);
         if (index === 0) btnUp.style.display = "none"; 
 
         const btnDown = document.createElement("button");
-        btnDown.className = "btn-move admin-only";
+        btnDown.className = "btn-move admin-only"; // Mover é SÓ Admin
         btnDown.innerHTML = "⬇️";
         btnDown.onclick = () => moveDown(index);
         if (index === queue.length - 1) btnDown.style.display = "none"; 
 
         const actionSelect = document.createElement("select");
-        actionSelect.className = "action-select admin-only";
+        actionSelect.className = "action-select admin-only"; // Excluir pessoas é SÓ Admin
         actionSelect.innerHTML = `
             <option value="" disabled selected>Ações...</option>
             <option value="v1">Ir p/ Vaga 1</option>
@@ -120,7 +132,7 @@ function renderSlot(slotNumber) {
         scoreDiv.className = "score-board";
         
         const btnMinus = document.createElement("button");
-        btnMinus.className = "btn-score admin-only";
+        btnMinus.className = "btn-score scorekeeper-only"; // Marcador pode usar
         btnMinus.textContent = "-";
         btnMinus.onclick = () => updateScore(slotNumber, -1);
 
@@ -130,7 +142,7 @@ function renderSlot(slotNumber) {
         scoreDisplay.textContent = currentScore;
 
         const btnPlus = document.createElement("button");
-        btnPlus.className = "btn-score admin-only";
+        btnPlus.className = "btn-score scorekeeper-only"; // Marcador pode usar
         btnPlus.textContent = "+";
         btnPlus.onclick = () => updateScore(slotNumber, 1);
 
@@ -142,12 +154,12 @@ function renderSlot(slotNumber) {
         btnGroup.className = "btn-group";
 
         const btnLost = document.createElement("button");
-        btnLost.className = "btn-action admin-only"; 
+        btnLost.className = "btn-action scorekeeper-only"; // Marcador pode usar
         btnLost.textContent = "Perdeu";
         btnLost.onclick = () => playerLost(slotNumber);
 
         const btnExit = document.createElement("button");
-        btnExit.className = "btn-remove admin-only"; 
+        btnExit.className = "btn-remove scorekeeper-only"; // Marcador pode usar
         btnExit.textContent = "Sair";
         btnExit.onclick = () => removeFromSlot(slotNumber);
 
@@ -177,8 +189,8 @@ function updateScore(slot, change) {
 }
 
 function addPlayer() {
-    if (!isAdmin && hasAddedName) {
-        alert("Você já adicionou um nome na fila. Aguarde sua vez!");
+    if (!isAdmin && myPlayerName) {
+        alert(`Você já adicionou o nome "${myPlayerName}". Aguarde sua vez!`);
         return; 
     }
 
@@ -189,7 +201,12 @@ function addPlayer() {
         else queue.push(name);
         
         inputElement.value = "";
-        if (!isAdmin) hasAddedName = true;
+        
+        // NOVO: Vincula o nome digitado ao celular
+        if (!isAdmin) {
+            myPlayerName = name;
+        }
+        
         render();
     }
 }
@@ -249,7 +266,7 @@ function resetAll() {
         court = { 1: null, 2: null };
         scores = { 1: 0, 2: 0 };
         queue = [];
-        hasAddedName = false; 
+        
         localStorage.removeItem(`voleiData_${currentLocal}`);
         render();
     }
@@ -274,30 +291,28 @@ loginBtn.addEventListener("click", () => {
         document.body.classList.remove("is-admin");
         isAdmin = false;
         loginBtn.textContent = "Área Admin";
+        render(); // Re-renderiza para checar se ele volta a ser marcador normal
     } else {
         if (!isOnline) {
             alert("Você precisa de internet para acessar o modo Admin.");
             return; 
         }
         
-        // MUDANÇA AQUI: Mostra no prompt qual parque está pedindo a senha
         const nomeDoParqueAtual = locaisNames[currentLocal];
         const senha = prompt(`Digite a senha do administrador para o ${nomeDoParqueAtual}:`);
-        
-        // MUDANÇA AQUI: Checa a senha correta no dicionário usando o currentLocal
         const senhaCorretaDesteParque = locaisPasswords[currentLocal];
 
         if (senha === senhaCorretaDesteParque) {
             document.body.classList.add("is-admin");
             isAdmin = true;
             loginBtn.textContent = "Sair do Admin";
+            render(); // Re-renderiza para esconder as coisas do marcador comum
         } else {
             alert("Senha incorreta!");
         }
     }
 });
 
-// --- FUNÇÕES DO LOBBY ---
 function selectLocal(localId) {
     window.location.href = `?local=${localId}`;
 }
@@ -306,7 +321,6 @@ function backToLobby() {
     window.location.href = window.location.pathname; 
 }
 
-// --- SISTEMA HÍBRIDO: DETECÇÃO DE REDE ---
 let isOnline = navigator.onLine; 
 const statusIndicator = document.getElementById("connectionStatus");
 
@@ -331,7 +345,6 @@ function updateNetworkStatus() {
 window.addEventListener("online", () => { isOnline = true; updateNetworkStatus(); });
 window.addEventListener("offline", () => { isOnline = false; updateNetworkStatus(); });
 
-// --- INICIALIZAÇÃO DO APP ---
 function initApp() {
     const lobbyContainer = document.getElementById("lobby-container");
     const appContainer = document.getElementById("app-container");
